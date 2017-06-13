@@ -89,6 +89,15 @@ void setupDrv(){
   writeRegister8(GO, 1);
 }
 
+void setupDrvAda() {
+  drv.begin();
+  drv.useLRA();
+
+  // I2C trigger by sending 'go' command 
+  // default, internal trigger when sending GO command
+  drv.setMode(DRV2605_MODE_INTTRIG); 
+}
+
 void setup() {
   Serial.begin(9600);
   Serial.println("DRV test");
@@ -97,40 +106,22 @@ void setup() {
     tcaselect(i);
 
     drv.setMode(DRV2605_MODE_INTTRIG);
-    setupDrv();
-
-    // drv.begin();
     
-    // drv.selectLibrary(6);
-    // drv.useLRA();
-  
-    // I2C trigger by sending 'go' command 
-    // default, internal trigger when sending GO command
-    // drv.setMode(DRV2605_MODE_INTTRIG); 
+    // setupDrvAda();
+    setupDrv();
   }
 
-  delay(2000);
+  delay(4000);
 
   for (int i = 0; i < LRA_AMOUNT; i++){
     tcaselect(i);
 
     drv.selectLibrary(6);
   
-    // I2C trigger by sending 'go' command 
-    // default, internal trigger when sending GO command
-    // drv.setMode(DRV2605_MODE_INTTRIG);
+    // set mode to standby
     writeRegister8(DRV2605_REG_MODE, 0x00);
   }
 
-//  tcaselect(0);
-//  drv.begin();
-  
-//  drv.selectLibrary(1);
-//  drv.useLRA();
-  
-  // I2C trigger by sending 'go' command 
-  // default, internal trigger when sending GO command
-//  drv.setMode(DRV2605_MODE_INTTRIG); 
 }
 
 uint8_t effect = 92;
@@ -145,7 +136,7 @@ void loop() {
     
 //    drv.setWaveform(0, effect);  // play effect 
 //    drv.setWaveform(1, 0);       // end waveform
-    drv.setWaveform(0, 1);
+    drv.setWaveform(0, 4);
     drv.setWaveform(1, 0);       // end waveform
 //    drv.setWaveform(1, 75);
 //    drv.setWaveform(2, 0);       // end waveform
