@@ -68,11 +68,17 @@ void setupDrv(){
   // select LRA
   writeRegister8(ERM_LRA, readRegister8(ERM_LRA) | 0x80);
   // FB_BRAKE  recommended 2
+  // writeRegister8(FB_BRAKE_FACTOR, readRegister8(FB_BRAKE_FACTOR) & 0x8F);
+  // writeRegister8(FB_BRAKE_FACTOR, readRegister8(FB_BRAKE_FACTOR) | 0x20);
+  // FB_BRAKE  dafault 3
   writeRegister8(FB_BRAKE_FACTOR, readRegister8(FB_BRAKE_FACTOR) & 0x8F);
-  writeRegister8(FB_BRAKE_FACTOR, readRegister8(FB_BRAKE_FACTOR) | 0x20);
+  writeRegister8(FB_BRAKE_FACTOR, readRegister8(FB_BRAKE_FACTOR) | 0x30);
   // LOOP_GAIN recommended 2
+  // writeRegister8(LOOP_GAIN, readRegister8(LOOP_GAIN) & 0xF3);
+  // writeRegister8(LOOP_GAIN, readRegister8(LOOP_GAIN) | 0x8);
+  // LOOP_GAIN default 1
   writeRegister8(LOOP_GAIN, readRegister8(LOOP_GAIN) & 0xF3);
-  writeRegister8(LOOP_GAIN, readRegister8(LOOP_GAIN) | 0x8);
+  writeRegister8(LOOP_GAIN, readRegister8(LOOP_GAIN) | 0x4);
   // RATED_VOLTAGE (from example, tune lower/higher [deduce effect specs])
   writeRegister8(RATED_VOLTAGE, 0x53);
   // OD_CLAMP (from example, tune lower for safety)
@@ -83,7 +89,11 @@ void setupDrv(){
   writeRegister8(BIDIR_INPUT, readRegister8(BIDIR_INPUT) | 0x80);
   // DRIVE_TIME
   writeRegister8(DRIVE_TIME, readRegister8(DRIVE_TIME) & 0xE0);
-  writeRegister8(DRIVE_TIME, readRegister8(DRIVE_TIME) | 0x14);
+  // writeRegister8(DRIVE_TIME, readRegister8(DRIVE_TIME) | 0x14);
+  writeRegister8(DRIVE_TIME, readRegister8(DRIVE_TIME) | 0x16);
+
+  // LRA_DRIVE_MODE set to 1
+  // writeRegister8(0x1D, readRegister8(0x1D) | 0x4);
 
   // perform auto calibration
   writeRegister8(GO, 1);
