@@ -108,6 +108,12 @@ void setupDrvAda() {
   drv.setMode(DRV2605_MODE_INTTRIG); 
 }
 
+void setupDrvNoCalibration() {
+    writeRegister8(ERM_LRA, readRegister8(ERM_LRA) | 0x80);
+    writeRegister8(BIDIR_INPUT, readRegister8(BIDIR_INPUT) | 0x80);
+
+}
+
 void setup() {
   Serial.begin(9600);
   Serial.println("DRV test");
@@ -119,6 +125,7 @@ void setup() {
     
     // setupDrvAda();
     setupDrv();
+    // setupDrvNoCalibration();
   }
 
   delay(4000);
