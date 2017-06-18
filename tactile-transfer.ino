@@ -143,25 +143,61 @@ void setup() {
 
 uint8_t effect = 92;
 
-void loop() {
-  // Serial.print("Effect #"); Serial.println(effect);
+void doPattern(int p) {
+  switch (p) {
+    case 1: // IMPACT
+      tcaselect(0);
+      drv.setWaveform(0, 4);
+      drv.setWaveform(1, 0);
+      drv.go();
 
-  for (int i = 0; i < LRA_AMOUNT; i++){
-    tcaselect(i);
-    Serial.print(i); Serial.print(" :"); Serial.println(readRegister8(GO));
-    Serial.print(i); Serial.print(" :"); Serial.println(readRegister8(STATUS));
-    
-//    drv.setWaveform(0, effect);  // play effect 
-//    drv.setWaveform(1, 0);       // end waveform
-    drv.setWaveform(0, 4);
-    drv.setWaveform(1, 0);       // end waveform
-//    drv.setWaveform(1, 75);
-//    drv.setWaveform(2, 0);       // end waveform
+      tcaselect(3);
+      drv.setWaveform(0, 4);
+      drv.setWaveform(1, 0);
+      drv.go();
 
-    // play the effect!
-    drv.go();
-    delay(60);
+      delay(60);
+
+      tcaselect(1);
+      drv.setWaveform(0, 1);
+      drv.setWaveform(1, 0);
+      drv.go();
+
+      tcaselect(2);
+      drv.setWaveform(0, 1);
+      drv.setWaveform(1, 0);
+      drv.go();
+      break;
   }
+}
+
+
+
+void loop() {
+  // import/implement bluetooth lib
+
+  // check if there are any commands/interactions from bluetooth
+
+  // check status of patterns (GO bit). skip applying any patterns if any aren't done?
+
+  // apply pending patterns
+
+  doPattern(1);
+
+  // for (int i = 0; i < LRA_AMOUNT; i++){
+  //   tcaselect(i);
+  //   Serial.print(i); Serial.print(" GO   :"); Serial.println(readRegister8(GO));
+  //   Serial.print(i); Serial.print(" DIAG :"); Serial.println(bitRead(readRegister8(STATUS), 3));
+    
+
+  //   drv.setWaveform(0, 1); //strong click 100%
+  //   // drv.setWaveform(0, 4); //sharp click 100%
+  //   drv.setWaveform(1, 0); // end waveform
+
+  //   // play the effect!
+  //   drv.go();
+  //   delay(50);
+  // }
   // set the effect to play
 //  drv.setWaveform(0, effect);  // play effect 
 //  drv.setWaveform(1, 0);       // end waveform
