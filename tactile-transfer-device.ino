@@ -1,6 +1,15 @@
 #include <Wire.h>
 #include "Adafruit_DRV2605.h"
 
+#include <Arduino.h>
+#include <SPI.h>
+
+#include "Adafruit_BLE.h"
+#include "Adafruit_BluefruitLE_SPI.h"
+#include "Adafruit_BluefruitLE_UART.h"
+
+#include "BluefruitConfig.h"
+
 Adafruit_DRV2605 drv;
 int LRA_AMOUNT = 4;
 
@@ -114,7 +123,19 @@ void setupDrvNoCalibration() {
 
 }
 
+/* ...hardware SPI, using SCK/MOSI/MISO hardware SPI pins and then user selected CS/IRQ/RST */
+Adafruit_BluefruitLE_SPI ble(BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
+
+// A small helper
+void error(const __FlashStringHelper*err) {
+  Serial.println(err);
+  while (1);
+}
+
 void setup() {
+  while (!Serial); // required for Flora & Micro
+  delay(500);
+
   Serial.begin(9600);
   Serial.println("DRV test");
   Wire.begin();
@@ -128,8 +149,33 @@ void setup() {
     // setupDrvNoCalibration();
   }
 
-  delay(4000);
 
+
+   /* Initialise BLE module */
+  Serial.print(F("Initialising the Bluefruit LE module: "));
+
+  if ( !ble.begin(VERBOSE_MODE) )
+  {
+    error(F("Couldn't find Bluefruit, make sure it's in command mode & check wiring?"));
+  }
+  Serial.println( F("OK!") );
+
+  /* Perform a factory reset to make sure everything is in a known state */
+  Serial.println(F("Performing a factory reset: "));
+  if (! ble.factoryReset() ){
+       error(F("Couldn't factory reset"));
+  }
+
+  /* Change the device name to make it easier to find */
+  Serial.println(F("Setting device name to 'Tactile Transfer': "));
+
+  if (! ble.sendCommandCheckOK(F("AT+GAPDEVNAME=Tactile Transfer")) ) {
+    error(F("Could not set device name?"));
+  }
+
+
+  delay(4000);
+  
   for (int i = 0; i < LRA_AMOUNT; i++){
     tcaselect(i);
 
@@ -171,6 +217,12 @@ void doPattern(int p) {
   }
 }
 
+void doWaveform(int p) {
+  drv.setWaveform(0, p);
+  drv.setWaveform(1, 0);
+  drv.go();
+}
+
 
 
 void loop() {
@@ -182,7 +234,7 @@ void loop() {
 
   // apply pending patterns
 
-  doPattern(1);
+  // doPattern(1);
 
   // for (int i = 0; i < LRA_AMOUNT; i++){
   //   tcaselect(i);
