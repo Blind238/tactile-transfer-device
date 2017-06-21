@@ -13,6 +13,9 @@
 Adafruit_DRV2605 drv;
 int LRA_AMOUNT = 4;
 
+int32_t serviceId;
+int32_t characteristicId;
+
 #define TCAADDR 0x70 //multiplexer
 #define DRV2605_ADDR 0x5A
  
@@ -30,11 +33,14 @@ void tcaselect(uint8_t i) {
 #define ERM_LRA 0x1A
 #define FB_BRAKE_FACTOR 0x1A
 #define LOOP_GAIN 0x1A
+
 #define RATED_VOLTAGE 0x16
 #define OD_CLAMP 0x17
 #define AUTO_CAL_TIME 0x1E
+
 // Below aka CONTROL 1
 #define DRIVE_TIME 0x1B
+
 // Below aka CONTROL 2
 #define BIDIR_INPUT 0x1C
 #define SAMPLE_TIME 0x1C
@@ -43,6 +49,146 @@ void tcaselect(uint8_t i) {
 
 #define GO 0x0C
 #define STATUS 0x00
+
+// bluetooth
+#define MODE_LED_BEHAVIOUR    "MODE"
+
+
+/* use hardware SPI, using SCK/MOSI/MISO hardware SPI pins and then user selected CS/IRQ/RST */
+Adafruit_BluefruitLE_SPI ble(BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
+
+// A small helper
+void error(const __FlashStringHelper*err) {
+  Serial.println(err);
+  while (1);
+}
+
+void setup() {
+  boolean success;
+
+  Serial.begin(9600);
+  Serial.println("DRV test");
+  Wire.begin();
+  for (int i = 0; i < LRA_AMOUNT; i++){
+    tcaselect(i);
+
+    drv.setMode(DRV2605_MODE_INTTRIG);
+    
+    // setupDrvAda();
+    setupDrv();
+    // setupDrvNoCalibration();
+  }
+
+
+   /* Initialise BLE module */
+  Serial.print(F("Initialising the Bluefruit LE module: "));
+
+  if ( !ble.begin(VERBOSE_MODE) )
+  {
+    error(F("Couldn't find Bluefruit, make sure it's in command mode & check wiring?"));
+  }
+  Serial.println( F("OK!") );
+
+  /* Perform a factory reset to make sure everything is in a known state */
+  Serial.println(F("Performing a factory reset: "));
+  if (! ble.factoryReset() ){
+       error(F("Couldn't factory reset"));
+  }
+
+  /* Change the device name to make it easier to find */
+  Serial.println(F("Setting device name to 'Tactile Transfer': "));
+
+  if (! ble.sendCommandCheckOK(F("AT+GAPDEVNAME=Tactile Transfer")) ) {
+    error(F("Could not set device name?"));
+  }
+
+  Serial.println(F("Adding custom service definition : "));
+  success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID128=e753a59e-00f0-4173-9608-b45fd879c848"), &serviceId);
+  if (! success) {
+    error(F("Could not add service"));
+  }
+
+  Serial.println(F("Adding custom characteristic definition : "));
+  success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID128=12f277e3-7915-4da9-bebc-6071ef2ce2e7, PROPERTIES=0x08, VALUE=0, DATATYPE=INTEGER"), &characteristicId);
+  if (! success) {
+    error(F("Could not add characteristic"));
+  }
+
+  /* Reset the device for the new service setting changes to take effect */
+  Serial.print(F("Performing ble SW reset (service changes require a reset): "));
+  ble.reset();
+
+
+
+  // TODO: replace with func to check that all GO bits are cleared
+  delay(3000);
+  
+  for (int i = 0; i < LRA_AMOUNT; i++){
+    tcaselect(i);
+
+    drv.selectLibrary(6);
+  
+    // set mode to standby
+    writeRegister8(DRV2605_REG_MODE, 0x00);
+  }
+
+  // wait for connection
+  while (! ble.isConnected()) {
+    delay(500);
+  }
+
+  // Change Mode LED Activity
+  Serial.println(F("******************************"));
+  Serial.println(F("Change LED activity to " MODE_LED_BEHAVIOUR));
+  ble.sendCommandCheckOK("AT+HWModeLED=" MODE_LED_BEHAVIOUR);
+  Serial.println(F("******************************"));
+
+}
+
+
+
+void loop() {
+  // Check for user input
+  char inputs[BUFSIZE+1];
+
+  if ( getUserInput(inputs, BUFSIZE) )
+  {
+    // Send characters to Bluefruit
+    Serial.print("[Send] ");
+    Serial.println(inputs);
+
+    ble.print("AT+BLEUARTTX=");
+    ble.println(inputs);
+
+    // check response stastus
+    if (! ble.waitForOK() ) {
+      Serial.println(F("Failed to send?"));
+    }
+  }
+
+  
+
+
+  // Check for incoming characters from Bluefruit
+  ble.println("AT+BLEUARTRX");
+  ble.readline();
+  if (strcmp(ble.buffer, "OK") == 0) {
+    // no data
+    return;
+  }
+  // Some data was found, its in the buffer
+  Serial.print(F("[Recv] ")); Serial.println(ble.buffer);
+  // ble.waitForOK();
+
+  doPattern(ble.buffer);
+  ble.waitForOK();
+
+  // check status of patterns (GO bit). skip applying any patterns if any aren't done?
+
+  // apply pending patterns
+
+}
+
 
 uint8_t readRegister8(uint8_t reg) {
   uint8_t x ;
@@ -123,98 +269,32 @@ void setupDrvNoCalibration() {
 
 }
 
-/* ...hardware SPI, using SCK/MOSI/MISO hardware SPI pins and then user selected CS/IRQ/RST */
-Adafruit_BluefruitLE_SPI ble(BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
-
-// A small helper
-void error(const __FlashStringHelper*err) {
-  Serial.println(err);
-  while (1);
-}
-
-void setup() {
-  while (!Serial); // required for Flora & Micro
-  delay(500);
-
-  Serial.begin(9600);
-  Serial.println("DRV test");
-  Wire.begin();
-  for (int i = 0; i < LRA_AMOUNT; i++){
-    tcaselect(i);
-
-    drv.setMode(DRV2605_MODE_INTTRIG);
-    
-    // setupDrvAda();
-    setupDrv();
-    // setupDrvNoCalibration();
-  }
-
-
-
-   /* Initialise BLE module */
-  Serial.print(F("Initialising the Bluefruit LE module: "));
-
-  if ( !ble.begin(VERBOSE_MODE) )
-  {
-    error(F("Couldn't find Bluefruit, make sure it's in command mode & check wiring?"));
-  }
-  Serial.println( F("OK!") );
-
-  /* Perform a factory reset to make sure everything is in a known state */
-  Serial.println(F("Performing a factory reset: "));
-  if (! ble.factoryReset() ){
-       error(F("Couldn't factory reset"));
-  }
-
-  /* Change the device name to make it easier to find */
-  Serial.println(F("Setting device name to 'Tactile Transfer': "));
-
-  if (! ble.sendCommandCheckOK(F("AT+GAPDEVNAME=Tactile Transfer")) ) {
-    error(F("Could not set device name?"));
-  }
-
-
-  delay(4000);
+void doPattern(char p[]) {
   
-  for (int i = 0; i < LRA_AMOUNT; i++){
-    tcaselect(i);
+  if (strcmp(p, "1") == 0) { // IMPACT
+    tcaselect(0);
+    drv.setWaveform(0, 1);
+    drv.setWaveform(1, 0);
+    drv.go();
 
-    drv.selectLibrary(6);
-  
-    // set mode to standby
-    writeRegister8(DRV2605_REG_MODE, 0x00);
+    tcaselect(3);
+    drv.setWaveform(0, 1);
+    drv.setWaveform(1, 0);
+    drv.go();
+
+    delay(60);
+
+    tcaselect(1);
+    drv.setWaveform(0, 1);
+    drv.setWaveform(1, 0);
+    drv.go();
+
+    tcaselect(2);
+    drv.setWaveform(0, 1);
+    drv.setWaveform(1, 0);
+    drv.go();
   }
 
-}
-
-uint8_t effect = 92;
-
-void doPattern(int p) {
-  switch (p) {
-    case 1: // IMPACT
-      tcaselect(0);
-      drv.setWaveform(0, 4);
-      drv.setWaveform(1, 0);
-      drv.go();
-
-      tcaselect(3);
-      drv.setWaveform(0, 4);
-      drv.setWaveform(1, 0);
-      drv.go();
-
-      delay(60);
-
-      tcaselect(1);
-      drv.setWaveform(0, 1);
-      drv.setWaveform(1, 0);
-      drv.go();
-
-      tcaselect(2);
-      drv.setWaveform(0, 1);
-      drv.setWaveform(1, 0);
-      drv.go();
-      break;
-  }
 }
 
 void doWaveform(int p) {
@@ -224,42 +304,28 @@ void doWaveform(int p) {
 }
 
 
+/**************************************************************************/
+/*!
+    @brief  Checks for user input (via the Serial Monitor)
+*/
+/**************************************************************************/
+bool getUserInput(char buffer[], uint8_t maxSize)
+{
+  // timeout in 100 milliseconds
+  TimeoutTimer timeout(100);
 
-void loop() {
-  // import/implement bluetooth lib
+  memset(buffer, 0, maxSize);
+  while( (!Serial.available()) && !timeout.expired() ) { delay(1); }
 
-  // check if there are any commands/interactions from bluetooth
+  if ( timeout.expired() ) return false;
 
-  // check status of patterns (GO bit). skip applying any patterns if any aren't done?
+  delay(2);
+  uint8_t count=0;
+  do
+  {
+    count += Serial.readBytes(buffer+count, maxSize);
+    delay(2);
+  } while( (count < maxSize) && (Serial.available()) );
 
-  // apply pending patterns
-
-  // doPattern(1);
-
-  // for (int i = 0; i < LRA_AMOUNT; i++){
-  //   tcaselect(i);
-  //   Serial.print(i); Serial.print(" GO   :"); Serial.println(readRegister8(GO));
-  //   Serial.print(i); Serial.print(" DIAG :"); Serial.println(bitRead(readRegister8(STATUS), 3));
-    
-
-  //   drv.setWaveform(0, 1); //strong click 100%
-  //   // drv.setWaveform(0, 4); //sharp click 100%
-  //   drv.setWaveform(1, 0); // end waveform
-
-  //   // play the effect!
-  //   drv.go();
-  //   delay(50);
-  // }
-  // set the effect to play
-//  drv.setWaveform(0, effect);  // play effect 
-//  drv.setWaveform(1, 0);       // end waveform
-
-  // play the effect!
-//  drv.go();
-
-  // wait a bit
-  delay(1000);
-
-//  effect++;
-//  if (effect > 117) effect = 1;
+  return true;
 }
