@@ -7,6 +7,7 @@
 #include "Adafruit_BLE.h"
 #include "Adafruit_BluefruitLE_SPI.h"
 #include "Adafruit_BluefruitLE_UART.h"
+#include "Adafruit_BLEGatt.h"
 
 #include "BluefruitConfig.h"
 
@@ -57,6 +58,8 @@ void tcaselect(uint8_t i) {
 /* use hardware SPI, using SCK/MOSI/MISO hardware SPI pins and then user selected CS/IRQ/RST */
 Adafruit_BluefruitLE_SPI ble(BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
 
+Adafruit_BLEGatt gatt(ble);
+
 // A small helper
 void error(const __FlashStringHelper*err) {
   Serial.println(err);
@@ -103,15 +106,23 @@ void setup() {
   }
 
   Serial.println(F("Adding custom service definition : "));
-  success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID128=e753a59e-00f0-4173-9608-b45fd879c848"), &serviceId);
+  success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID128=e7-53-a5-9e-00-f0-41-73-96-08-b4-5f-d8-79-c8-48"), &serviceId);
   if (! success) {
     error(F("Could not add service"));
   }
 
   Serial.println(F("Adding custom characteristic definition : "));
-  success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID128=12f277e3-7915-4da9-bebc-6071ef2ce2e7, PROPERTIES=0x08, VALUE=0, DATATYPE=INTEGER"), &characteristicId);
+  // PROPERTIES = read + write without reply + notify
+  success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID128=12-f2-77-e3-79-15-4d-a9-be-bc-60-71-ef-2c-e2-e7,PROPERTIES=0x16,MIN_LEN=1,DATATYPE=INTEGER,VALUE=0"), &characteristicId);
   if (! success) {
     error(F("Could not add characteristic"));
+  }
+
+  Serial.println(F("Setting advertising data : "));
+  // first the flags for the device(02-01-06), then advertise service UUID
+  success = ble.sendCommandCheckOK((F("AT+GAPSETADVDATA=02-01-06-11-07-48-c8-79-d8-5f-b4-08-96-73-41-f0-00-9e-a5-53-e7")));
+  if (!success) {
+    error(F("Could not set advertising data"));
   }
 
   /* Reset the device for the new service setting changes to take effect */
@@ -146,42 +157,98 @@ void setup() {
 }
 
 
-
 void loop() {
+  int p;
+  boolean success;
   // Check for user input
-  char inputs[BUFSIZE+1];
+  // char inputs[BUFSIZE+1];
 
-  if ( getUserInput(inputs, BUFSIZE) )
+  // if ( getUserInput(inputs, BUFSIZE) )
+  // {
+  //   // Send characters to Bluefruit
+  //   Serial.print("[Send] ");
+  //   Serial.println(inputs);
+
+  //   ble.print("AT+BLEUARTTX=");
+  //   ble.println(inputs);
+
+  //   // check response stastus
+  //   if (! ble.waitForOK() ) {
+  //     Serial.println(F("Failed to send?"));
+  //   }
+  // }
+  // success = ble.sendCommandWithIntReply(F("AT+GATTCHAR=" characteristicId), &p)
+  // if (!success) {
+  //   error(F("Could not get characteristic data"));
+  // }
+
+  ble.print("AT+GATTCHAR=");
+  ble.println(characteristicId);
+  
+  while (ble.readline())
   {
-    // Send characters to Bluefruit
-    Serial.print("[Send] ");
-    Serial.println(inputs);
-
-    ble.print("AT+BLEUARTTX=");
-    ble.println(inputs);
-
-    // check response stastus
-    if (! ble.waitForOK() ) {
-      Serial.println(F("Failed to send?"));
+    Serial.print(ble.buffer);
+    if ( strcmp(ble.buffer, "OK") == 0 )
+    {
+    }
+    else if ( strcmp(ble.buffer, "ERROR") == 0 )
+    {
+    } else {
+      p = atoi(ble.buffer);
     }
   }
 
-  
-
+  switch (p) {
+    case 1:
+      doPattern(1);
+      ble.print("AT+GATTCHAR=");
+      ble.print(characteristicId);
+      ble.println(",0");
+      ble.waitForOK();
+      // success = ble.sendCommandCheckOK(F("AT+GATTCHAR=" characteristicId ",0"))
+      // if (!success) {
+      //   error(F("Could not set characteristic data"));
+      // }
+      break;
+    case 2:
+      doPattern(2);
+      ble.print("AT+GATTCHAR=");
+      ble.print(characteristicId);
+      ble.println(",0");
+      ble.waitForOK();
+      // success = ble.sendCommandCheckOK(F("AT+GATTCHAR=" characteristicId ",0"))
+      // if (!success) {
+      //   error(F("Could not set characteristic data"));
+      // }
+      break;
+    case 3:
+      doPattern(3);
+      ble.print("AT+GATTCHAR=");
+      ble.print(characteristicId);
+      ble.println(",0");
+      ble.waitForOK();
+      // success = ble.sendCommandCheckOK(F("AT+GATTCHAR=" characteristicId ",0"))
+      // if (!success) {
+      //   error(F("Could not set characteristic data"));
+      // }
+      break;
+    case 0:
+      return;
+  }
 
   // Check for incoming characters from Bluefruit
-  ble.println("AT+BLEUARTRX");
-  ble.readline();
-  if (strcmp(ble.buffer, "OK") == 0) {
-    // no data
-    return;
-  }
-  // Some data was found, its in the buffer
-  Serial.print(F("[Recv] ")); Serial.println(ble.buffer);
-  // ble.waitForOK();
+  // ble.println("AT+BLEUARTRX");
+  // ble.readline();
+  // if (strcmp(ble.buffer, "OK") == 0) {
+  //   // no data
+  //   return;
+  // }
+  // // Some data was found, its in the buffer
+  // Serial.print(F("[Recv] ")); Serial.println(ble.buffer);
+  // // ble.waitForOK();
 
-  doPattern(ble.buffer);
-  ble.waitForOK();
+  // doPattern(ble.buffer);
+  // ble.waitForOK();
 
   // check status of patterns (GO bit). skip applying any patterns if any aren't done?
 
@@ -269,31 +336,64 @@ void setupDrvNoCalibration() {
 
 }
 
-void doPattern(char p[]) {
+void doPattern(int p) {
   
-  if (strcmp(p, "1") == 0) { // IMPACT
-    tcaselect(0);
-    drv.setWaveform(0, 1);
-    drv.setWaveform(1, 0);
-    drv.go();
+  switch(p) {
+    case 1:
+      tcaselect(0);
+      drv.setWaveform(0, 1);
+      drv.setWaveform(1, 0);
+      drv.go();
 
-    tcaselect(3);
-    drv.setWaveform(0, 1);
-    drv.setWaveform(1, 0);
-    drv.go();
+      tcaselect(3);
+      drv.setWaveform(0, 1);
+      drv.setWaveform(1, 0);
+      drv.go();
 
-    delay(60);
+      delay(80);
 
-    tcaselect(1);
-    drv.setWaveform(0, 1);
-    drv.setWaveform(1, 0);
-    drv.go();
+      tcaselect(1);
+      drv.setWaveform(0, 1);
+      drv.setWaveform(1, 0);
+      drv.go();
 
-    tcaselect(2);
-    drv.setWaveform(0, 1);
-    drv.setWaveform(1, 0);
-    drv.go();
+      tcaselect(2);
+      drv.setWaveform(0, 1);
+      drv.setWaveform(1, 0);
+      drv.go();
+      break;
+    case 2:
+      for (int i = 0; i < LRA_AMOUNT; i++){
+        tcaselect(i);
+
+        drv.setWaveform(0, 1);
+        drv.setWaveform(1, 0);
+        drv.go();
+        delay(80);
+      }
+      
+      break;
+    case 3:
+      for (int i = 0; i < LRA_AMOUNT; i++){
+        tcaselect(i);
+
+        drv.setWaveform(0, 1);
+        drv.setWaveform(1, 0);
+        drv.go();
+      }
+
+      delay(100);
+
+      for (int i = 0; i < LRA_AMOUNT; i++){
+        tcaselect(i);
+
+        drv.setWaveform(0, 1);
+        drv.setWaveform(1, 0);
+        drv.go();
+      }
+      break;
   }
+  
 
 }
 
