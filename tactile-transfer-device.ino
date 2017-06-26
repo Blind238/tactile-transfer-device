@@ -112,8 +112,8 @@ void setup() {
   }
 
   Serial.println(F("Adding custom characteristic definition : "));
-  // PROPERTIES = read + write without reply + notify
-  success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID128=12-f2-77-e3-79-15-4d-a9-be-bc-60-71-ef-2c-e2-e7,PROPERTIES=0x16,MIN_LEN=1,DATATYPE=INTEGER,VALUE=0"), &characteristicId);
+  // PROPERTIES = read + write + notify
+  success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID128=12-f2-77-e3-79-15-4d-a9-be-bc-60-71-ef-2c-e2-e7,PROPERTIES=0x1A,MIN_LEN=1,DATATYPE=INTEGER,VALUE=0"), &characteristicId);
   if (! success) {
     error(F("Could not add characteristic"));
   }
