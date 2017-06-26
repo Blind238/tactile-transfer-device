@@ -198,43 +198,53 @@ void loop() {
     }
   }
 
-  switch (p) {
-    case 1:
-      doPattern(1);
-      ble.print("AT+GATTCHAR=");
-      ble.print(characteristicId);
-      ble.println(",0");
-      ble.waitForOK();
-      // success = ble.sendCommandCheckOK(F("AT+GATTCHAR=" characteristicId ",0"))
-      // if (!success) {
-      //   error(F("Could not set characteristic data"));
-      // }
-      break;
-    case 2:
-      doPattern(2);
-      ble.print("AT+GATTCHAR=");
-      ble.print(characteristicId);
-      ble.println(",0");
-      ble.waitForOK();
-      // success = ble.sendCommandCheckOK(F("AT+GATTCHAR=" characteristicId ",0"))
-      // if (!success) {
-      //   error(F("Could not set characteristic data"));
-      // }
-      break;
-    case 3:
-      doPattern(3);
-      ble.print("AT+GATTCHAR=");
-      ble.print(characteristicId);
-      ble.println(",0");
-      ble.waitForOK();
-      // success = ble.sendCommandCheckOK(F("AT+GATTCHAR=" characteristicId ",0"))
-      // if (!success) {
-      //   error(F("Could not set characteristic data"));
-      // }
-      break;
-    case 0:
-      return;
+  if (p == 0) {
+    return;
   }
+
+  doPattern(p);
+  ble.print("AT+GATTCHAR=");
+  ble.print(characteristicId);
+  ble.println(",0");
+  ble.waitForOK();
+
+  // switch (p) {
+  //   case 1:
+  //     doPattern(1);
+  //     ble.print("AT+GATTCHAR=");
+  //     ble.print(characteristicId);
+  //     ble.println(",0");
+  //     ble.waitForOK();
+  //     // success = ble.sendCommandCheckOK(F("AT+GATTCHAR=" characteristicId ",0"))
+  //     // if (!success) {
+  //     //   error(F("Could not set characteristic data"));
+  //     // }
+  //     break;
+  //   case 2:
+  //     doPattern(2);
+  //     ble.print("AT+GATTCHAR=");
+  //     ble.print(characteristicId);
+  //     ble.println(",0");
+  //     ble.waitForOK();
+  //     // success = ble.sendCommandCheckOK(F("AT+GATTCHAR=" characteristicId ",0"))
+  //     // if (!success) {
+  //     //   error(F("Could not set characteristic data"));
+  //     // }
+  //     break;
+  //   case 3:
+  //     doPattern(3);
+  //     ble.print("AT+GATTCHAR=");
+  //     ble.print(characteristicId);
+  //     ble.println(",0");
+  //     ble.waitForOK();
+  //     // success = ble.sendCommandCheckOK(F("AT+GATTCHAR=" characteristicId ",0"))
+  //     // if (!success) {
+  //     //   error(F("Could not set characteristic data"));
+  //     // }
+  //     break;
+  //   case 0:
+  //     return;
+  // }
 
   // Check for incoming characters from Bluefruit
   // ble.println("AT+BLEUARTRX");
@@ -340,6 +350,25 @@ void doPattern(int p) {
   
   switch(p) {
     case 1:
+      for (int i = 0; i < LRA_AMOUNT; i++){
+        tcaselect(i);
+
+        drv.setWaveform(0, 1);
+        drv.setWaveform(1, 0);
+        drv.go();
+      }
+
+      delay(100);
+
+      for (int i = 0; i < LRA_AMOUNT; i++){
+        tcaselect(i);
+
+        drv.setWaveform(0, 1);
+        drv.setWaveform(1, 0);
+        drv.go();
+      }
+      break;
+    case 2:
       tcaselect(0);
       drv.setWaveform(0, 1);
       drv.setWaveform(1, 0);
@@ -362,35 +391,27 @@ void doPattern(int p) {
       drv.setWaveform(1, 0);
       drv.go();
       break;
-    case 2:
-      for (int i = 0; i < LRA_AMOUNT; i++){
+    case 3:
+      for (int i = LRA_AMOUNT; i > 0; i--){
         tcaselect(i);
 
         drv.setWaveform(0, 1);
         drv.setWaveform(1, 0);
         drv.go();
-        delay(80);
+        delay(60);
       }
       
       break;
-    case 3:
+    case 4:
       for (int i = 0; i < LRA_AMOUNT; i++){
         tcaselect(i);
 
         drv.setWaveform(0, 1);
         drv.setWaveform(1, 0);
         drv.go();
+        delay(60);
       }
-
-      delay(100);
-
-      for (int i = 0; i < LRA_AMOUNT; i++){
-        tcaselect(i);
-
-        drv.setWaveform(0, 1);
-        drv.setWaveform(1, 0);
-        drv.go();
-      }
+      
       break;
   }
   
