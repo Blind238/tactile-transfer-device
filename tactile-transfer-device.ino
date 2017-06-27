@@ -159,29 +159,8 @@ void setup() {
 
 void loop() {
   int p;
-  boolean success;
-  // Check for user input
-  // char inputs[BUFSIZE+1];
 
-  // if ( getUserInput(inputs, BUFSIZE) )
-  // {
-  //   // Send characters to Bluefruit
-  //   Serial.print("[Send] ");
-  //   Serial.println(inputs);
-
-  //   ble.print("AT+BLEUARTTX=");
-  //   ble.println(inputs);
-
-  //   // check response stastus
-  //   if (! ble.waitForOK() ) {
-  //     Serial.println(F("Failed to send?"));
-  //   }
-  // }
-  // success = ble.sendCommandWithIntReply(F("AT+GATTCHAR=" characteristicId), &p)
-  // if (!success) {
-  //   error(F("Could not get characteristic data"));
-  // }
-
+  // request our current characteristic value
   ble.print("AT+GATTCHAR=");
   ble.println(characteristicId);
   
@@ -199,70 +178,17 @@ void loop() {
   }
 
   if (p == 0) {
+    // nothing to do here
     return;
   }
 
+  // non zero value, execute pattern
   doPattern(p);
+  // reset to 0 after pattern is done (it is blocking)
   ble.print("AT+GATTCHAR=");
   ble.print(characteristicId);
   ble.println(",0");
   ble.waitForOK();
-
-  // switch (p) {
-  //   case 1:
-  //     doPattern(1);
-  //     ble.print("AT+GATTCHAR=");
-  //     ble.print(characteristicId);
-  //     ble.println(",0");
-  //     ble.waitForOK();
-  //     // success = ble.sendCommandCheckOK(F("AT+GATTCHAR=" characteristicId ",0"))
-  //     // if (!success) {
-  //     //   error(F("Could not set characteristic data"));
-  //     // }
-  //     break;
-  //   case 2:
-  //     doPattern(2);
-  //     ble.print("AT+GATTCHAR=");
-  //     ble.print(characteristicId);
-  //     ble.println(",0");
-  //     ble.waitForOK();
-  //     // success = ble.sendCommandCheckOK(F("AT+GATTCHAR=" characteristicId ",0"))
-  //     // if (!success) {
-  //     //   error(F("Could not set characteristic data"));
-  //     // }
-  //     break;
-  //   case 3:
-  //     doPattern(3);
-  //     ble.print("AT+GATTCHAR=");
-  //     ble.print(characteristicId);
-  //     ble.println(",0");
-  //     ble.waitForOK();
-  //     // success = ble.sendCommandCheckOK(F("AT+GATTCHAR=" characteristicId ",0"))
-  //     // if (!success) {
-  //     //   error(F("Could not set characteristic data"));
-  //     // }
-  //     break;
-  //   case 0:
-  //     return;
-  // }
-
-  // Check for incoming characters from Bluefruit
-  // ble.println("AT+BLEUARTRX");
-  // ble.readline();
-  // if (strcmp(ble.buffer, "OK") == 0) {
-  //   // no data
-  //   return;
-  // }
-  // // Some data was found, its in the buffer
-  // Serial.print(F("[Recv] ")); Serial.println(ble.buffer);
-  // // ble.waitForOK();
-
-  // doPattern(ble.buffer);
-  // ble.waitForOK();
-
-  // check status of patterns (GO bit). skip applying any patterns if any aren't done?
-
-  // apply pending patterns
 
 }
 
@@ -422,31 +348,4 @@ void doWaveform(int p) {
   drv.setWaveform(0, p);
   drv.setWaveform(1, 0);
   drv.go();
-}
-
-
-/**************************************************************************/
-/*!
-    @brief  Checks for user input (via the Serial Monitor)
-*/
-/**************************************************************************/
-bool getUserInput(char buffer[], uint8_t maxSize)
-{
-  // timeout in 100 milliseconds
-  TimeoutTimer timeout(100);
-
-  memset(buffer, 0, maxSize);
-  while( (!Serial.available()) && !timeout.expired() ) { delay(1); }
-
-  if ( timeout.expired() ) return false;
-
-  delay(2);
-  uint8_t count=0;
-  do
-  {
-    count += Serial.readBytes(buffer+count, maxSize);
-    delay(2);
-  } while( (count < maxSize) && (Serial.available()) );
-
-  return true;
 }
